@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
@@ -10,127 +10,96 @@ import Loader from 'components/Loader';
 import Modal from 'components/Modal';
 
 const API_KEY = '26121034-8b2b223e077b6bd26f41dbdcc';
-const IDLE = 'idle';
-const LOADING = 'loading';
-const RESOLVED = 'resolved';
+const STATUS = {
+  IDLE: 'idle',
+  LOADING: 'loading',
+  RESOLVED: 'resolved',
+};
 
 axios.defaults.baseURL = 'https://pixabay.com/api';
 
-class App extends Component {
-  state = {
-    searchQuery: '',
-    images: [],
-    page: 1,
-    status: IDLE,
-    isModalVisible: false,
-    largeImageURL: null,
-  };
+function App() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState(STATUS.IDLE);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState(null);
 
-  async componentDidUpdate(prevProps, prevState) {
-    const previousQuery = prevState.searchQuery;
-    const currentQuery = this.state.searchQuery;
-    const previousPage = prevState.page;
-    const currentPage = this.state.page;
-
-    if (currentQuery !== previousQuery || currentPage !== previousPage) {
-      await this.getImages();
+  useEffect(() => {
+    if (searchQuery === '') {
+      return;
     }
-  }
+    getImages();
+  }, [searchQuery, page]);
 
-  async getImages() {
-    const { searchQuery, page } = this.state;
-
-    this.setState({
-      status: LOADING,
-    });
+  async function getImages() {
+    setStatus(STATUS.LOADING);
 
     try {
       const response = await axios.get(
         `/?q=${searchQuery}&page=${page}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
       );
 
-      if (response.data.hits.length === 0) {
+      const newImages = response.data.hits;
+      const { length } = newImages;
+
+      if (length === 0) {
         toast.warning(`No images by query "${searchQuery}"`);
-        this.setState({
-          status: IDLE,
-        });
+        setStatus(STATUS.IDLE);
         return;
       }
 
-      if (response.data.hits.length > 0 && response.data.hits.length < 12) {
+      if (length > 11) {
+        setImages(images => [...images, ...newImages]);
+        setStatus(STATUS.RESOLVED);
+      }
+
+      if (length > 0 && length < 12) {
         toast.info(`That's all...`);
-        this.setState(prevState => ({
-          images: [...prevState.images, ...response.data.hits],
-          status: IDLE,
-        }));
+        setImages(images => [...images, ...newImages]);
+        setStatus(STATUS.IDLE);
         return;
-      }
-
-      if (response.data.hits.length > 11) {
-        this.setState(prevState => ({
-          images: [...prevState.images, ...response.data.hits],
-          status: RESOLVED,
-        }));
       }
     } catch (error) {
       toast.error(error.message);
-      this.setState({
-        status: IDLE,
-      });
+      setStatus(STATUS.IDLE);
     }
   }
 
-  onSubmit = searchQuery => {
-    this.setState(prevState => {
-      const previousQuery = prevState.searchQuery;
-
-      if (previousQuery !== searchQuery) {
-        return {
-          searchQuery,
-          images: [],
-          page: 1,
-        };
-      }
-    });
+  const onSubmit = newSearchQuery => {
+    if (searchQuery !== newSearchQuery) {
+      setSearchQuery(newSearchQuery);
+      setImages([]);
+      setPage(1);
+    }
   };
 
-  loadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const loadMore = () => {
+    setPage(page + 1);
   };
 
-  handleModal = id => {
-    const largeImage = this.state.images.find(image => image.id === id);
+  const handleModal = id => {
+    const largeImage = images.find(image => image.id === id);
 
-    this.setState({
-      largeImageURL: largeImage.largeImageURL,
-    });
-    this.toggleModal();
+    setLargeImageURL(largeImage.largeImageURL);
+    toggleModal();
   };
 
-  toggleModal = () => {
-    this.setState(prevState => ({
-      isModalVisible: !prevState.isModalVisible,
-    }));
+  const toggleModal = () => {
+    setIsModalVisible(isModalVisible => !isModalVisible);
   };
 
-  render() {
-    const { images, status, isModalVisible, largeImageURL } = this.state;
-
-    return (
-      <div className={s.app}>
-        <Searchbar onSubmit={this.onSubmit} />
-        <ImageGallery images={images} handleModal={this.handleModal} />
-        {status === LOADING && <Loader />}
-        {status === RESOLVED && <Button onClick={this.loadMore} />}
-        {isModalVisible && (
-          <Modal src={largeImageURL} onClose={this.toggleModal} />
-        )}
-        <ToastContainer autoClose={3000} theme={'colored'} />
-      </div>
-    );
-  }
+  return (
+    <div className={s.app}>
+      <Searchbar onSubmit={onSubmit} />
+      <ImageGallery images={images} handleModal={handleModal} />
+      {status === STATUS.LOADING && <Loader />}
+      {status === STATUS.RESOLVED && <Button onClick={loadMore} />}
+      {isModalVisible && <Modal src={largeImageURL} onClose={toggleModal} />}
+      <ToastContainer autoClose={3000} theme={'colored'} />
+    </div>
+  );
 }
 
 export default App;
