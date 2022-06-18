@@ -31,6 +31,7 @@ function App() {
       return;
     }
     getImages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, page]);
 
   async function getImages() {
