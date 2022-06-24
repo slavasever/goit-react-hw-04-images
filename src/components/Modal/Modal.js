@@ -4,15 +4,14 @@ import s from './Modal.module.css';
 
 function Modal({ src, onClose }) {
   useEffect(() => {
+    const handleEscape = event => {
+      if (event.code === 'Escape') onClose();
+    };
+
     window.addEventListener('keydown', handleEscape);
 
     return () => window.removeEventListener('keydown', handleEscape);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleEscape = event => {
-    if (event.code === 'Escape') onClose();
-  };
+  }, [onClose]);
 
   const handleBackdropClick = event => {
     if (event.target === event.currentTarget) onClose();

@@ -30,43 +30,43 @@ function App() {
     if (searchQuery === '') {
       return;
     }
-    getImages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, page]);
 
-  async function getImages() {
-    setStatus(STATUS.LOADING);
+    async function getImages() {
+      setStatus(STATUS.LOADING);
 
-    try {
-      const response = await axios.get(
-        `/?q=${searchQuery}&page=${page}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
-      );
+      try {
+        const response = await axios.get(
+          `/?q=${searchQuery}&page=${page}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`
+        );
 
-      const newImages = response.data.hits;
-      const { length } = newImages;
+        const newImages = response.data.hits;
+        const { length } = newImages;
 
-      if (length === 0) {
-        toast.warning(`No images by query "${searchQuery}"`);
+        if (length === 0) {
+          toast.warning(`No images by query "${searchQuery}"`);
+          setStatus(STATUS.IDLE);
+          return;
+        }
+
+        if (length > 11) {
+          setImages(images => [...images, ...newImages]);
+          setStatus(STATUS.RESOLVED);
+        }
+
+        if (length > 0 && length < 12) {
+          toast.info(`That's all...`);
+          setImages(images => [...images, ...newImages]);
+          setStatus(STATUS.IDLE);
+          return;
+        }
+      } catch (error) {
+        toast.error(error.message);
         setStatus(STATUS.IDLE);
-        return;
       }
-
-      if (length > 11) {
-        setImages(images => [...images, ...newImages]);
-        setStatus(STATUS.RESOLVED);
-      }
-
-      if (length > 0 && length < 12) {
-        toast.info(`That's all...`);
-        setImages(images => [...images, ...newImages]);
-        setStatus(STATUS.IDLE);
-        return;
-      }
-    } catch (error) {
-      toast.error(error.message);
-      setStatus(STATUS.IDLE);
     }
-  }
+
+    getImages();
+  }, [searchQuery, page]);
 
   const onSubmit = newSearchQuery => {
     if (searchQuery !== newSearchQuery) {
